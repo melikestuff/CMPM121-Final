@@ -10,7 +10,6 @@ let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 
 let ballMesh: THREE.Mesh;
-// Using any here is fine – we only ever use AmmoLib at runtime:
 let ballBody: any;
 
 let platformMesh: THREE.Mesh;
@@ -79,8 +78,7 @@ function initThree() {
 // Physics Objects
 // --------------------
 
-function createGround(AmmoLibLocal: Ammo) {
-  // Visual ground
+function createGround() {
   const geom = new THREE.BoxGeometry(20, 0.5, 20);
   const mat = new THREE.MeshStandardMaterial({ color: 0x222222 });
   const mesh = new THREE.Mesh(geom, mat);
@@ -88,38 +86,43 @@ function createGround(AmmoLibLocal: Ammo) {
   mesh.receiveShadow = true;
   scene.add(mesh);
 
-  // Static rigid body
-  const shape = new AmmoLibLocal.btBoxShape(
-    new AmmoLibLocal.btVector3(10, 0.25, 10),
+  const shape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(10, 0.25, 10),
   );
 
-  const transform = new AmmoLibLocal.btTransform();
+  const transform = new AmmoLib.btTransform();
   transform.setIdentity();
-  transform.setOrigin(new AmmoLibLocal.btVector3(0, -0.25, 0));
+  transform.setOrigin(new AmmoLib.btVector3(0, -0.25, 0));
 
-  const motion = new AmmoLibLocal.btDefaultMotionState(transform);
+  const motion = new AmmoLib.btDefaultMotionState(transform);
 
-  const rbInfo = new AmmoLibLocal.btRigidBodyConstructionInfo(
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
     0,
     motion,
     shape,
-    new AmmoLibLocal.btVector3(0, 0, 0),
+    new AmmoLib.btVector3(0, 0, 0),
   );
 
-  const body = new AmmoLibLocal.btRigidBody(rbInfo);
+  const body = new AmmoLib.btRigidBody(rbInfo);
   physicsWorld.addRigidBody(body);
 }
 
 function createGoal() {
-  const geom = new THREE.BoxGeometry(1, 0.1, 1);
+  // 2x2 goal so it’s reasonably hittable
+  const geom = new THREE.BoxGeometry(2, 0.1, 2);
   const mat = new THREE.MeshStandardMaterial({ color: 0x00aa44 });
   goalMesh = new THREE.Mesh(geom, mat);
-  goalMesh.position.set(0, 0.05, 2);
+
+  // Put it downhill from the ramp on the positive Z side
+  goalMesh.position.set(0, 0.05, 1.5);
+
   goalMesh.receiveShadow = true;
   scene.add(goalMesh);
 }
 
-function createBall(AmmoLibLocal: Ammo) {
+
+
+function createBall() {
   const radius = 0.3;
 
   const geom = new THREE.SphereGeometry(radius);
@@ -128,99 +131,137 @@ function createBall(AmmoLibLocal: Ammo) {
   ballMesh.castShadow = true;
   scene.add(ballMesh);
 
-  const shape = new AmmoLibLocal.btSphereShape(radius);
-  const transform = new AmmoLibLocal.btTransform();
+  const shape = new AmmoLib.btSphereShape(radius);
+  const transform = new AmmoLib.btTransform();
   transform.setIdentity();
-  transform.setOrigin(new AmmoLibLocal.btVector3(0, 3, 0));
 
-  const motion = new AmmoLibLocal.btDefaultMotionState(transform);
+  // Start slightly "uphill" on the ramp on the negative Z side
+  transform.setOrigin(new AmmoLib.btVector3(0, 2.2, -1.0));
+
+  const motion = new AmmoLib.btDefaultMotionState(transform);
   const mass = 1;
-  const inertia = new AmmoLibLocal.btVector3(0, 0, 0);
+  const inertia = new AmmoLib.btVector3(0, 0, 0);
   shape.calculateLocalInertia(mass, inertia);
 
-  const rbInfo = new AmmoLibLocal.btRigidBodyConstructionInfo(
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
     mass,
     motion,
     shape,
     inertia,
   );
 
-  ballBody = new AmmoLibLocal.btRigidBody(rbInfo);
+  ballBody = new AmmoLib.btRigidBody(rbInfo);
   physicsWorld.addRigidBody(ballBody);
 }
 
-function createPlatform(AmmoLibLocal: Ammo) {
+
+
+function createPlatform() {
   const geom = new THREE.BoxGeometry(3, 0.3, 3);
   const mat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
   platformMesh = new THREE.Mesh(geom, mat);
   platformMesh.position.set(0, 1, 0);
+
+  // Tilt so ball rolls toward positive Z (toward the goal)
+  platformMesh.rotation.x = -0.35;
+
   platformMesh.castShadow = true;
   platformMesh.receiveShadow = true;
   scene.add(platformMesh);
 
-  const shape = new AmmoLibLocal.btBoxShape(
-    new AmmoLibLocal.btVector3(1.5, 0.15, 1.5),
+  const shape = new AmmoLib.btBoxShape(
+    new AmmoLib.btVector3(1.5, 0.15, 1.5),
   );
 
-  const transform = new AmmoLibLocal.btTransform();
+  const transform = new AmmoLib.btTransform();
   transform.setIdentity();
-  transform.setOrigin(new AmmoLibLocal.btVector3(0, 1, 0));
+  transform.setOrigin(new AmmoLib.btVector3(0, 1, 0));
 
-  const motion = new AmmoLibLocal.btDefaultMotionState(transform);
+  const q = new THREE.Quaternion().setFromEuler(platformMesh.rotation);
+  transform.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
 
-  const rbInfo = new AmmoLibLocal.btRigidBodyConstructionInfo(
+  const motion = new AmmoLib.btDefaultMotionState(transform);
+
+  const rbInfo = new AmmoLib.btRigidBodyConstructionInfo(
     0,
     motion,
     shape,
-    new AmmoLibLocal.btVector3(0, 0, 0),
+    new AmmoLib.btVector3(0, 0, 0),
   );
 
-  platformBody = new AmmoLibLocal.btRigidBody(rbInfo);
+  platformBody = new AmmoLib.btRigidBody(rbInfo);
+
+  const CF_KINEMATIC_OBJECT = 2;
+  platformBody.setCollisionFlags(
+    platformBody.getCollisionFlags() | CF_KINEMATIC_OBJECT,
+  );
+  const DISABLE_DEACTIVATION = 4;
+  platformBody.setActivationState(DISABLE_DEACTIVATION);
+
   physicsWorld.addRigidBody(platformBody);
 }
 
-// Reset ball/goal for replay
-function resetBall(AmmoLibLocal: Ammo) {
-  // Set transform back above platform
-  const transform = new AmmoLibLocal.btTransform();
-  transform.setIdentity();
-  transform.setOrigin(new AmmoLibLocal.btVector3(0, 3, 0));
 
-  ballBody.setLinearVelocity(
-    new AmmoLibLocal.btVector3(0, 0, 0),
-  );
-  ballBody.setAngularVelocity(
-    new AmmoLibLocal.btVector3(0, 0, 0),
-  );
+
+// Reset ball/goal for replay
+function resetBall() {
+  const transform = new AmmoLib.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new AmmoLib.btVector3(0, 2.2, 1.0)); // same as spawn
+
+  ballBody.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
+  ballBody.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
   ballBody.setWorldTransform(transform);
   ballBody.getMotionState().setWorldTransform(transform);
+  ballBody.activate(true);
+
+  ballMesh.position.set(0, 2.2, 1.0);
 
   gameOver = false;
   setStatus("", "#ffffff");
+  goalMesh.material = new THREE.MeshStandardMaterial({
+    color: 0x00aa44,
+  });
 }
+
 
 // --------------------
 // Game Logic
 // --------------------
 
 function handleInput() {
-  if (keys["KeyA"]) platformMesh.rotation.z += 0.02;
-  if (keys["KeyD"]) platformMesh.rotation.z -= 0.02;
+  let moved = false;
 
-  // Reset
+  // Tilt left/right with A/D
+  if (keys["KeyA"]) {
+    platformMesh.rotation.z += 0.03;
+    moved = true;
+  }
+  if (keys["KeyD"]) {
+    platformMesh.rotation.z -= 0.03;
+    moved = true;
+  }
+
   if (keys["KeyR"]) {
-    resetBall(AmmoLib);
+    resetBall();
     keys["KeyR"] = false;
   }
 
-  const t = new AmmoLib.btTransform();
-  t.setIdentity();
-  t.setOrigin(new AmmoLib.btVector3(0, 1, 0));
+  if (moved) {
+    const t = new AmmoLib.btTransform();
+    t.setIdentity();
+    t.setOrigin(new AmmoLib.btVector3(0, 1, 0));
 
-  const q = new THREE.Quaternion().setFromEuler(platformMesh.rotation);
-  t.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
+    const q = new THREE.Quaternion().setFromEuler(platformMesh.rotation);
+    t.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
 
-  platformBody.getMotionState().setWorldTransform(t);
+    platformBody.setWorldTransform(t);
+    platformBody.getMotionState().setWorldTransform(t);
+
+    if (ballBody) {
+      ballBody.activate(true);
+    }
+  }
 }
 
 function syncBallAndCheckWinLose() {
@@ -230,10 +271,8 @@ function syncBallAndCheckWinLose() {
 
   ballMesh.position.set(p.x(), p.y(), p.z());
 
-  if (gameOver) return;
-
   // Fail: ball fell off the world
-  if (ballMesh.position.y < -2) {
+  if (!gameOver && ballMesh.position.y < -2) {
     gameOver = true;
     setStatus("YOU LOSE", "#ff2244");
     goalMesh.material = new THREE.MeshStandardMaterial({
@@ -243,20 +282,25 @@ function syncBallAndCheckWinLose() {
   }
 
   // Win: ball inside goal footprint & near ground
+  if (!gameOver) {
   const gx = goalMesh.position.x;
   const gz = goalMesh.position.z;
-  const halfSize = 0.5;
+
+  // Match the 2x2 goal footprint
+  const halfSize = 1.0;
 
   const inX = Math.abs(ballMesh.position.x - gx) < halfSize;
   const inZ = Math.abs(ballMesh.position.z - gz) < halfSize;
   const nearY = ballMesh.position.y > 0 && ballMesh.position.y < 1;
 
-  if (inX && inZ && nearY) {
-    gameOver = true;
-    setStatus("YOU WIN!", "#22ff88");
-    goalMesh.material = new THREE.MeshStandardMaterial({
-      color: 0x22ff88,
-    });
+
+    if (inX && inZ && nearY) {
+      gameOver = true;
+      setStatus("YOU WIN!", "#22ff88");
+      goalMesh.material = new THREE.MeshStandardMaterial({
+        color: 0x22ff88,
+      });
+    }
   }
 }
 
@@ -267,11 +311,9 @@ function syncBallAndCheckWinLose() {
 function animate() {
   requestAnimationFrame(animate);
 
-  if (!gameOver) {
-    handleInput();
-    stepPhysics(1 / 60);
-    syncBallAndCheckWinLose();
-  }
+  handleInput();
+  stepPhysics(1 / 60);
+  syncBallAndCheckWinLose();
 
   renderer.render(scene, camera);
 }
@@ -281,13 +323,13 @@ function animate() {
 // --------------------
 
 async function start() {
-  await initPhysics(); // this sets up AmmoLib + physicsWorld
+  await initPhysics();
 
   initThree();
-  createGround(AmmoLib);
+  createGround();
   createGoal();
-  createPlatform(AmmoLib);
-  createBall(AmmoLib);
+  createPlatform();
+  createBall();
 
   animate();
 }

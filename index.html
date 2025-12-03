@@ -2,27 +2,52 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Three.js + Ammo.js Puzzle</title>
+    <title>Three.js + Ammo.js Physics Puzzle</title>
     <style>
       body {
         margin: 0;
         overflow: hidden;
         background: black;
         color: white;
-        font-family: system-ui;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       }
+
       #ui {
         position: fixed;
-        top: 10px;
-        left: 10px;
+        top: 12px;
+        left: 12px;
+        font-size: 14px;
+        color: #ddd;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 8px 10px;
+        border-radius: 6px;
+      }
+
+      #status-message {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 36px;
+        font-weight: 900;
+        color: white;
+        text-shadow: 0 0 15px black;
+        pointer-events: none;
       }
     </style>
   </head>
+
   <body>
     <div id="ui">
-      A / D = move platform<br />
-      R = reset
+      <div><b>Controls</b></div>
+      <div>A / D — Tilt platform</div>
+      <div>R — Reset</div>
     </div>
+
+    <!-- This is where YOU WIN / YOU LOSE appears -->
+    <div id="status-message"></div>
+
+    <!-- Your TypeScript game entry -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1,9 +1,12 @@
 import Ammo from "ammojs-typed";
+import type AmmoT from "ammojs-typed";
 
+export type AmmoType = typeof AmmoT;
+export let AmmoLib: AmmoType;
 export let physicsWorld: Ammo.btDiscreteDynamicsWorld;
 
 export async function initPhysics() {
-  const AmmoLib = await Ammo();
+  AmmoLib = await Ammo();
 
   const collisionConfiguration =
     new AmmoLib.btDefaultCollisionConfiguration();

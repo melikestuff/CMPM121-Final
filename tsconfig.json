@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "lib": ["DOM", "ESNext"],
+    "types": ["vite/client"],
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

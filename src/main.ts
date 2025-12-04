@@ -32,6 +32,39 @@ window.addEventListener("keydown", (e) => (keys[e.code] = true));
 window.addEventListener("keyup", (e) => (keys[e.code] = false));
 
 // --------------------
+// Selection state
+// --------------------
+
+type ControllablePlatform = {
+  mesh: THREE.Mesh;
+  body: any;
+};
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+const platforms: ControllablePlatform[] = [];
+let selectedPlatform: ControllablePlatform | null = null;
+
+function setSelectedPlatform(next: ControllablePlatform | null) {
+  // Clear previous highlight
+  if (selectedPlatform) {
+    (selectedPlatform.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(
+      0x000000,
+    );
+  }
+
+  selectedPlatform = next;
+
+  // Add highlight to new selection
+  if (selectedPlatform) {
+    (selectedPlatform.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(
+      0x222222,
+    );
+  }
+}
+
+// --------------------
 // UI Helpers
 // --------------------
 
@@ -58,6 +91,8 @@ function initThree() {
   camera.lookAt(0, 1, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Allow clicking/tapping on platforms to select them
+  renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
@@ -72,6 +107,32 @@ function initThree() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+}
+
+function onPointerDown(event: PointerEvent) {
+  // Compute pointer position in normalized device coordinates (-1 to +1)
+  const rect = renderer.domElement.getBoundingClientRect();
+  const x = (event.clientX - rect.left) / rect.width;
+  const y = (event.clientY - rect.top) / rect.height;
+
+  pointer.x = x * 2 - 1;
+  pointer.y = -(y * 2 - 1);
+
+  // Cast a ray into the scene
+  raycaster.setFromCamera(pointer, camera);
+
+  // We only care about platform meshes
+  const platformMeshes = platforms.map((p) => p.mesh);
+  const hits = raycaster.intersectObjects(platformMeshes, false);
+
+  if (hits.length > 0) {
+    const hitMesh = hits[0].object as THREE.Mesh;
+    const platform = platforms.find((p) => p.mesh === hitMesh) || null;
+    setSelectedPlatform(platform);
+  } else {
+    // Clicked empty space: deselect
+    setSelectedPlatform(null);
+  }
 }
 
 // --------------------
@@ -155,7 +216,6 @@ function createBall() {
 }
 
 
-
 function createPlatform() {
   const geom = new THREE.BoxGeometry(3, 0.3, 3);
   const mat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
@@ -199,7 +259,18 @@ function createPlatform() {
   platformBody.setActivationState(DISABLE_DEACTIVATION);
 
   physicsWorld.addRigidBody(platformBody);
+
+  // Register this platform as an interactive object
+  const platform: ControllablePlatform = {
+    mesh: platformMesh,
+    body: platformBody,
+  };
+  platforms.push(platform);
+
+  // Optional: select it by default when the game starts
+  setSelectedPlatform(platform);
 }
+
 
 
 
@@ -230,39 +301,56 @@ function resetBall() {
 // --------------------
 
 function handleInput() {
-  let moved = false;
-
-  // Tilt left/right with A/D
-  if (keys["KeyA"]) {
-    platformMesh.rotation.z += 0.03;
-    moved = true;
-  }
-  if (keys["KeyD"]) {
-    platformMesh.rotation.z -= 0.03;
-    moved = true;
-  }
-
+  // Reset still works regardless of selection
   if (keys["KeyR"]) {
     resetBall();
     keys["KeyR"] = false;
   }
 
+  if (!selectedPlatform) return;
+
+  let moved = false;
+
+  // Tilt left/right with A/D on the selected platform
+  if (keys["KeyA"]) {
+    selectedPlatform.mesh.rotation.z += 0.03;
+    moved = true;
+  }
+  if (keys["KeyD"]) {
+    selectedPlatform.mesh.rotation.z -= 0.03;
+    moved = true;
+  }
+
   if (moved) {
+    // Clamp if you want to avoid crazy flipping:
+    // selectedPlatform.mesh.rotation.z = THREE.MathUtils.clamp(
+    //   selectedPlatform.mesh.rotation.z, -0.8, 0.8
+    // );
+
     const t = new AmmoLib.btTransform();
     t.setIdentity();
-    t.setOrigin(new AmmoLib.btVector3(0, 1, 0));
+    t.setOrigin(
+      new AmmoLib.btVector3(
+        selectedPlatform.mesh.position.x,
+        selectedPlatform.mesh.position.y,
+        selectedPlatform.mesh.position.z,
+      ),
+    );
 
-    const q = new THREE.Quaternion().setFromEuler(platformMesh.rotation);
+    const q = new THREE.Quaternion().setFromEuler(
+      selectedPlatform.mesh.rotation,
+    );
     t.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
 
-    platformBody.setWorldTransform(t);
-    platformBody.getMotionState().setWorldTransform(t);
+    selectedPlatform.body.setWorldTransform(t);
+    selectedPlatform.body.getMotionState().setWorldTransform(t);
 
     if (ballBody) {
       ballBody.activate(true);
     }
   }
 }
+
 
 function syncBallAndCheckWinLose() {
   const t = new AmmoLib.btTransform();

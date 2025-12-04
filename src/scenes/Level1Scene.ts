@@ -1,3 +1,8 @@
+// =====================================
+// Level1Scene.ts
+// First physics puzzle scene
+// =====================================
+
 import * as THREE from "three";
 import { sceneManager } from "../SceneManager";
 import { initPhysics, physicsWorld, stepPhysics, AmmoLib } from "../physics";
@@ -9,24 +14,32 @@ import {
   PhysicsObject
 } from "../GameObjects";
 import { SelectionManager } from "../Selection";
+import { inventory } from "../Inventory";
+import { Level2Scene } from "./Level2Scene";
 
 export class Level1Scene {
+  // Scene Execution Flags
   private running = false;
   private animateBound: () => void;
 
+  // Rendering
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
 
+  // Game Objects
   private selection!: SelectionManager;
-
   private ball!: PhysicsObject;
   private platform!: PhysicsObject;
   private ground!: PhysicsObject;
   private goalMesh!: THREE.Mesh;
 
+  // UI
   private statusEl: HTMLDivElement | null = null;
+  private continueBtn: HTMLButtonElement | null = null;
+  private levelLabel: HTMLDivElement | null = null;
 
+  // Logic
   private keys: Record<string, boolean> = {};
   private gameOver = false;
 
@@ -34,59 +47,126 @@ export class Level1Scene {
     this.animateBound = this.animate.bind(this);
   }
 
+  // =====================================
+  // Scene Lifecycle: Start
+  // =====================================
   async start() {
     this.running = true;
-
     await initPhysics();
 
-    this.statusEl = document.getElementById("status-message") as HTMLDivElement | null;
+    this.statusEl = document.getElementById("status-message") as HTMLDivElement;
     this.setStatus("");
 
     this.initThree();
     this.initInput();
 
+    // Create Environment
     this.ground = createGround(this.scene, physicsWorld, AmmoLib);
     this.goalMesh = createGoal(this.scene);
     this.goalMesh.position.set(2, 0.05, -3);
 
-    // Create platform FIRST then apply rotation immediately
+    // Create Main Platform
     this.platform = createPlatform(this.scene, physicsWorld, AmmoLib);
-
-    // Force physics sync so slope actually exists BEFORE ball placement
     this.syncPlatformRotationToPhysics();
 
-    // Now spawn ball at correct slope-side location
+    // Spawn Ball
     this.ball = createBall(this.scene, physicsWorld, AmmoLib);
+    this.syncBallVisualToPhysics();
 
-    // Sync visual position of ball to physics
-    {
-      const tmp = new AmmoLib.btTransform();
-      this.ball.body.getMotionState().getWorldTransform(tmp);
-      const p = tmp.getOrigin();
-      this.ball.mesh.position.set(p.x(), p.y(), p.z());
-    }
-
-    // selection system
+    // Allow selecting platform
     this.selection = new SelectionManager(this.camera, this.renderer);
     this.selection.addSelectable(this.platform);
 
     requestAnimationFrame(this.animateBound);
   }
 
+  // =====================================
+  // Scene Lifecycle: Stop
+  // =====================================
   stop() {
     this.running = false;
     if (this.renderer) this.renderer.domElement.remove();
+    if (this.levelLabel) this.levelLabel.remove();
   }
 
-  /* ========= UI Helper ========= */
+  // =====================================
+  // UI Helpers
+  // =====================================
+  createLevelLabel(text: string) {
+    if (this.levelLabel) this.levelLabel.remove();
+
+    const div = document.createElement("div");
+    div.textContent = text;
+    div.style.position = "absolute";
+    div.style.top = "10px";
+    div.style.right = "10px";
+    div.style.padding = "6px 12px";
+    div.style.background = "rgba(0,0,0,0.6)";
+    div.style.color = "white";
+    div.style.fontSize = "18px";
+    div.style.fontFamily = "sans-serif";
+    div.style.borderRadius = "6px";
+    div.style.zIndex = "2000";
+
+    document.body.appendChild(div);
+    this.levelLabel = div;
+  }
+
   setStatus(text: string, color: string = "#ffffff") {
     if (!this.statusEl) return;
     this.statusEl.textContent = text;
     this.statusEl.style.color = color;
   }
 
-  /* ========= Rendering ========= */
+  showRewardPopup(text: string) {
+    const popup = document.createElement("div");
+    popup.textContent = text;
+    popup.style.position = "absolute";
+    popup.style.left = "50%";
+    popup.style.top = "40%";
+    popup.style.transform = "translate(-50%, -50%)";
+    popup.style.padding = "20px";
+    popup.style.background = "rgba(0,0,0,0.8)";
+    popup.style.color = "white";
+    popup.style.fontSize = "32px";
+    popup.style.border = "2px solid gold";
+    popup.style.borderRadius = "8px";
+    popup.style.zIndex = "2000";
+    popup.style.pointerEvents = "none";
+    document.body.appendChild(popup);
+
+    setTimeout(() => popup.remove(), 1800);
+  }
+
+  showContinueButton() {
+    if (this.continueBtn) this.continueBtn.remove();
+
+    const btn = document.createElement("button");
+    btn.textContent = "Continue";
+    btn.style.position = "absolute";
+    btn.style.left = "50%";
+    btn.style.top = "70%";
+    btn.style.transform = "translate(-50%, -50%)";
+    btn.style.padding = "12px 24px";
+    btn.style.fontSize = "24px";
+    btn.style.cursor = "pointer";
+    btn.style.zIndex = "2000";
+
+    document.body.appendChild(btn);
+    this.continueBtn = btn;
+
+    btn.addEventListener("click", () => {
+      btn.remove();
+      sceneManager.changeScene(new Level2Scene(), "Level2");
+    });
+  }
+
+  // =====================================
+  // Rendering Setup
+  // =====================================
   initThree() {
+    this.createLevelLabel("Level 1");
+
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
@@ -108,14 +188,20 @@ export class Level1Scene {
     this.scene.add(light);
   }
 
-  /* ========= Input ========= */
+  // =====================================
+  // Input Handling
+  // =====================================
   initInput() {
-    window.addEventListener("keydown", e => (this.keys[e.code] = true));
-    window.addEventListener("keyup", e => (this.keys[e.code] = false));
+    window.addEventListener("keydown", e => this.keys[e.code] = true);
+    window.addEventListener("keyup", e => this.keys[e.code] = false);
   }
 
-  /* ========= Reset Ball ========= */
   resetBall() {
+    if (this.continueBtn) {
+      this.continueBtn.remove();
+      this.continueBtn = null;
+    }
+
     const transform = new AmmoLib.btTransform();
     transform.setIdentity();
     transform.setOrigin(new AmmoLib.btVector3(0, 2.2, -1.0));
@@ -133,7 +219,6 @@ export class Level1Scene {
     (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0x00aa44);
   }
 
-  /* ========= Selection Input ========= */
   handleInput() {
     if (this.keys["KeyR"]) {
       this.resetBall();
@@ -158,19 +243,19 @@ export class Level1Scene {
     if (moved) this.syncPlatformRotationToPhysics();
   }
 
-  /* ========= Ensure platform physics matches visual rotation ========= */
+  // =====================================
+  // Physics Sync Helpers
+  // =====================================
   syncPlatformRotationToPhysics() {
     const selected = this.selection?.selected ?? this.platform;
 
     const t = new AmmoLib.btTransform();
     t.setIdentity();
-    t.setOrigin(
-      new AmmoLib.btVector3(
-        selected.mesh.position.x,
-        selected.mesh.position.y,
-        selected.mesh.position.z
-      )
-    );
+    t.setOrigin(new AmmoLib.btVector3(
+      selected.mesh.position.x,
+      selected.mesh.position.y,
+      selected.mesh.position.z
+    ));
 
     const q = new THREE.Quaternion().setFromEuler(selected.mesh.rotation);
     t.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
@@ -180,7 +265,17 @@ export class Level1Scene {
     this.ball?.body?.activate(true);
   }
 
-  /* ========= Physics Sync + Win/Lose ========= */
+  syncBallVisualToPhysics() {
+    const t = new AmmoLib.btTransform();
+    this.ball.body.getMotionState().getWorldTransform(t);
+
+    const p = t.getOrigin();
+    this.ball.mesh.position.set(p.x(), p.y(), p.z());
+  }
+
+  // =====================================
+  // Win/Loss Logic
+  // =====================================
   syncBallAndCheckWinLoss() {
     const t = new AmmoLib.btTransform();
     this.ball.body.getMotionState().getWorldTransform(t);
@@ -188,10 +283,12 @@ export class Level1Scene {
     const p = t.getOrigin();
     this.ball.mesh.position.set(p.x(), p.y(), p.z());
 
+    // Lose Condition
     if (!this.gameOver && this.ball.mesh.position.y < -2) {
       this.gameOver = true;
       this.setStatus("YOU LOSE", "#ff2244");
       (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0xaa0000);
+      this.showContinueButton();
       return;
     }
 
@@ -205,12 +302,19 @@ export class Level1Scene {
 
     if (!this.gameOver && inX && inZ && nearY) {
       this.gameOver = true;
+
       this.setStatus("YOU WIN!", "#22ff88");
       (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0x22ff88);
+
+      inventory.add("GoldenBadge");
+      this.showRewardPopup("You got the Golden Badge!");
+      this.showContinueButton();
     }
   }
 
-  /* ========= Game Loop ========= */
+  // =====================================
+  // Game Loop
+  // =====================================
   animate() {
     if (!this.running) return;
 

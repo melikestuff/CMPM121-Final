@@ -6,7 +6,11 @@ export type SceneController = {
 export class SceneManager {
   private currentScene: SceneController | null = null;
 
-  // Load from browser storage
+  // Keys for persistent storage
+  private lastSceneKey = "lastScene";
+  private unlockedLevelKey = "unlockedLevel";
+
+   // --------------- Load / Save last played scene ----------------
   getSavedSceneName(): string | null {
     return localStorage.getItem("lastScene");
   }
@@ -15,6 +19,21 @@ export class SceneManager {
     localStorage.setItem("lastScene", name);
   }
 
+  // --------------- Level Unlock System ----------------
+  unlockLevel(levelName: string) {
+    localStorage.setItem(this.unlockedLevelKey, levelName);
+  }
+
+  getUnlockedLevel(): string | null {
+    return localStorage.getItem(this.unlockedLevelKey);
+  }
+
+  resetProgress() {
+    localStorage.removeItem(this.unlockedLevelKey);
+    localStorage.removeItem(this.lastSceneKey);
+  }
+
+  // --------------- Scene Switching ----------------
   changeScene(next: SceneController, sceneName: string) {
     if (this.currentScene) this.currentScene.stop();
     this.currentScene = next;

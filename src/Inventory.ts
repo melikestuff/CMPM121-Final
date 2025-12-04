@@ -31,7 +31,23 @@ export class Inventory {
   save() {
     localStorage.setItem("inventory", JSON.stringify([...this.items]));
   }
+  
 }
 
 // Export a singleton instance so all scenes share the same inventory
 export const inventory = new Inventory();
+
+export function updateInventoryLabel() {
+    let label = document.getElementById("inventory-label");
+
+    if (!label) return;
+
+    const items = [];
+
+    if (inventory.has("GoldenBadge")) items.push("Golden Badge");
+    if (inventory.has("PlatinumBadge")) items.push("Platinum Badge");
+
+    label.textContent = items.length > 0 ?
+        `Items: ${items.join(", ")}` :
+        "Items: (none)";
+}

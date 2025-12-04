@@ -1,5 +1,7 @@
 import { sceneManager } from "../SceneManager";
 import { Level1Scene } from "./Level1Scene";
+import { inventory } from "../Inventory";
+import { Level2Scene } from "./Level2Scene";
 
 export class MainMenuScene {
   private container: HTMLDivElement | null = null;
@@ -34,7 +36,10 @@ export class MainMenuScene {
     newGameBtn.textContent = "New Game";
     newGameBtn.style.padding = "10px 30px";
     newGameBtn.onclick = () => {
-      sceneManager.changeScene(new Level1Scene(), "Level1");
+    inventory.clear(); // Clear inventory
+    sceneManager.resetProgress(); // reset level completion
+
+    sceneManager.changeScene(new Level1Scene(), "Level1");
     };
     this.container.appendChild(newGameBtn);
 
@@ -43,9 +48,15 @@ export class MainMenuScene {
     continueBtn.textContent = "Continue";
     continueBtn.style.padding = "10px 30px";
     continueBtn.onclick = () => {
-      const last = sceneManager.getSavedSceneName() ?? "Level1";
-      sceneManager.changeScene(new Level1Scene(), last);
+    const unlocked = sceneManager.getUnlockedLevel();
+
+    if (unlocked === "Level2") {
+        sceneManager.changeScene(new Level2Scene(), "Level2");
+    } else {
+        sceneManager.changeScene(new Level1Scene(), "Level1");
+    }
     };
+
     this.container.appendChild(continueBtn);
 
     document.body.appendChild(this.container);

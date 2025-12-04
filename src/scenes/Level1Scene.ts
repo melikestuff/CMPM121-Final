@@ -1,8 +1,3 @@
-// =====================================
-// Level1Scene.ts
-// First physics puzzle scene
-// =====================================
-
 import * as THREE from "three";
 import { sceneManager } from "../SceneManager";
 import { initPhysics, physicsWorld, stepPhysics, AmmoLib } from "../physics";
@@ -11,107 +6,111 @@ import {
   createGoal,
   createPlatform,
   createGround,
-  PhysicsObject
+  PhysicsObject,
+  placePhysicsObject
 } from "../GameObjects";
 import { SelectionManager } from "../Selection";
 import { inventory } from "../Inventory";
 import { Level2Scene } from "./Level2Scene";
+import { updateInventoryUI } from "../UIInventoryDisplay";
+import { updateInventoryLabel } from "../Inventory";
+
 
 export class Level1Scene {
-  // Scene Execution Flags
   private running = false;
   private animateBound: () => void;
 
-  // Rendering
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
 
-  // Game Objects
   private selection!: SelectionManager;
+
   private ball!: PhysicsObject;
   private platform!: PhysicsObject;
   private ground!: PhysicsObject;
   private goalMesh!: THREE.Mesh;
 
-  // UI
   private statusEl: HTMLDivElement | null = null;
-  private continueBtn: HTMLButtonElement | null = null;
-  private levelLabel: HTMLDivElement | null = null;
 
-  // Logic
   private keys: Record<string, boolean> = {};
   private gameOver = false;
+
+  private continueBtn: HTMLButtonElement | null = null;
+
+  private levelLabel: HTMLDivElement | null = null;
+
+createLevelLabel(levelText: string) {
+  // remove old label if switching scenes
+  if (this.levelLabel) this.levelLabel.remove();
+
+  const div = document.createElement("div");
+  div.textContent = levelText;
+  div.style.position = "absolute";
+  div.style.top = "10px";
+  div.style.right = "10px";
+  div.style.padding = "6px 12px";
+  div.style.background = "rgba(0,0,0,0.6)";
+  div.style.color = "white";
+  div.style.fontSize = "18px";
+  div.style.fontFamily = "sans-serif";
+  div.style.borderRadius = "6px";
+  div.style.zIndex = "2000";
+
+  document.body.appendChild(div);
+  this.levelLabel = div;
+}
 
   constructor() {
     this.animateBound = this.animate.bind(this);
   }
 
-  // =====================================
-  // Scene Lifecycle: Start
-  // =====================================
   async start() {
     this.running = true;
+
     await initPhysics();
 
-    this.statusEl = document.getElementById("status-message") as HTMLDivElement;
+    this.statusEl = document.getElementById("status-message") as HTMLDivElement | null;
     this.setStatus("");
 
     this.initThree();
     this.initInput();
 
-    // Create Environment
     this.ground = createGround(this.scene, physicsWorld, AmmoLib);
     this.goalMesh = createGoal(this.scene);
     this.goalMesh.position.set(2, 0.05, -3);
 
-    // Create Main Platform
+    // Create platform FIRST then apply rotation immediately
     this.platform = createPlatform(this.scene, physicsWorld, AmmoLib);
+
+    // Force physics sync so slope actually exists BEFORE ball placement
     this.syncPlatformRotationToPhysics();
 
-    // Spawn Ball
+    // Now spawn ball at correct slope-side location
     this.ball = createBall(this.scene, physicsWorld, AmmoLib);
-    this.syncBallVisualToPhysics();
 
-    // Allow selecting platform
+    // Sync visual position of ball to physics
+    {
+      const tmp = new AmmoLib.btTransform();
+      this.ball.body.getMotionState().getWorldTransform(tmp);
+      const p = tmp.getOrigin();
+      this.ball.mesh.position.set(p.x(), p.y(), p.z());
+    }
+
+    // selection system
     this.selection = new SelectionManager(this.camera, this.renderer);
     this.selection.addSelectable(this.platform);
 
+    updateInventoryUI();
     requestAnimationFrame(this.animateBound);
   }
 
-  // =====================================
-  // Scene Lifecycle: Stop
-  // =====================================
   stop() {
     this.running = false;
     if (this.renderer) this.renderer.domElement.remove();
-    if (this.levelLabel) this.levelLabel.remove();
   }
 
-  // =====================================
-  // UI Helpers
-  // =====================================
-  createLevelLabel(text: string) {
-    if (this.levelLabel) this.levelLabel.remove();
-
-    const div = document.createElement("div");
-    div.textContent = text;
-    div.style.position = "absolute";
-    div.style.top = "10px";
-    div.style.right = "10px";
-    div.style.padding = "6px 12px";
-    div.style.background = "rgba(0,0,0,0.6)";
-    div.style.color = "white";
-    div.style.fontSize = "18px";
-    div.style.fontFamily = "sans-serif";
-    div.style.borderRadius = "6px";
-    div.style.zIndex = "2000";
-
-    document.body.appendChild(div);
-    this.levelLabel = div;
-  }
-
+  /* ========= UI Helper ========= */
   setStatus(text: string, color: string = "#ffffff") {
     if (!this.statusEl) return;
     this.statusEl.textContent = text;
@@ -119,53 +118,59 @@ export class Level1Scene {
   }
 
   showRewardPopup(text: string) {
-    const popup = document.createElement("div");
-    popup.textContent = text;
-    popup.style.position = "absolute";
-    popup.style.left = "50%";
-    popup.style.top = "40%";
-    popup.style.transform = "translate(-50%, -50%)";
-    popup.style.padding = "20px";
-    popup.style.background = "rgba(0,0,0,0.8)";
-    popup.style.color = "white";
-    popup.style.fontSize = "32px";
-    popup.style.border = "2px solid gold";
-    popup.style.borderRadius = "8px";
-    popup.style.zIndex = "2000";
-    popup.style.pointerEvents = "none";
-    document.body.appendChild(popup);
+  const popup = document.createElement("div");
+  popup.textContent = text;
+  popup.style.position = "absolute";
+  popup.style.left = "50%";
+  popup.style.top = "40%";
+  popup.style.transform = "translate(-50%, -50%)";
+  popup.style.padding = "20px";
+  popup.style.background = "rgba(0,0,0,0.8)";
+  popup.style.color = "white";
+  popup.style.fontSize = "32px";
+  popup.style.border = "2px solid gold";
+  popup.style.borderRadius = "8px";
+  popup.style.zIndex = "2000";
+  popup.style.pointerEvents = "none";
+  document.body.appendChild(popup);
 
-    setTimeout(() => popup.remove(), 1800);
+  setTimeout(() => popup.remove(), 1800);
+}
+
+showContinueButton() {
+  // if old button exists, remove it
+  if (this.continueBtn) {
+    this.continueBtn.remove();
   }
 
-  showContinueButton() {
-    if (this.continueBtn) this.continueBtn.remove();
+  const btn = document.createElement("button");
+  btn.textContent = "Continue";
+  btn.style.position = "absolute";
+  btn.style.left = "50%";
+  btn.style.top = "70%";
+  btn.style.transform = "translate(-50%, -50%)";
+  btn.style.padding = "12px 24px";
+  btn.style.fontSize = "24px";
+  btn.style.cursor = "pointer";
+  btn.style.zIndex = "2000";
 
-    const btn = document.createElement("button");
-    btn.textContent = "Continue";
-    btn.style.position = "absolute";
-    btn.style.left = "50%";
-    btn.style.top = "70%";
-    btn.style.transform = "translate(-50%, -50%)";
-    btn.style.padding = "12px 24px";
-    btn.style.fontSize = "24px";
-    btn.style.cursor = "pointer";
-    btn.style.zIndex = "2000";
+  document.body.appendChild(btn);
 
-    document.body.appendChild(btn);
-    this.continueBtn = btn;
+  // store reference so we can remove later
+  this.continueBtn = btn;
 
-    btn.addEventListener("click", () => {
-      btn.remove();
-      sceneManager.changeScene(new Level2Scene(), "Level2");
-    });
-  }
+  btn.addEventListener("click", () => {
+    btn.remove();
+    this.continueBtn = null;
+    sceneManager.unlockLevel("Level2");
+    sceneManager.changeScene(new Level2Scene(), "Level2");
+  });
+}
 
-  // =====================================
-  // Rendering Setup
-  // =====================================
-  initThree() {
-    this.createLevelLabel("Level 1");
+
+
+  /* ========= Rendering ========= */
+  initThree() {this.createLevelLabel("Level 1");
 
     this.scene = new THREE.Scene();
 
@@ -188,37 +193,39 @@ export class Level1Scene {
     this.scene.add(light);
   }
 
-  // =====================================
-  // Input Handling
-  // =====================================
+  /* ========= Input ========= */
   initInput() {
-    window.addEventListener("keydown", e => this.keys[e.code] = true);
-    window.addEventListener("keyup", e => this.keys[e.code] = false);
+    window.addEventListener("keydown", e => (this.keys[e.code] = true));
+    window.addEventListener("keyup", e => (this.keys[e.code] = false));
   }
 
+  /* ========= Reset Ball ========= */
   resetBall() {
-    if (this.continueBtn) {
-      this.continueBtn.remove();
-      this.continueBtn = null;
-    }
-
-    const transform = new AmmoLib.btTransform();
-    transform.setIdentity();
-    transform.setOrigin(new AmmoLib.btVector3(0, 2.2, -1.0));
-
-    this.ball.body.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
-    this.ball.body.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
-    this.ball.body.setWorldTransform(transform);
-    this.ball.body.getMotionState().setWorldTransform(transform);
-    this.ball.body.activate(true);
-
-    this.ball.mesh.position.set(0, 2.2, -1.0);
-
-    this.gameOver = false;
-    this.setStatus("");
-    (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0x00aa44);
+  // remove continue button if present
+  if (this.continueBtn) {
+    this.continueBtn.remove();
+    this.continueBtn = null;
   }
 
+  const transform = new AmmoLib.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new AmmoLib.btVector3(0, 2.2, -1.0));
+
+  this.ball.body.setLinearVelocity(new AmmoLib.btVector3(0, 0, 0));
+  this.ball.body.setAngularVelocity(new AmmoLib.btVector3(0, 0, 0));
+  this.ball.body.setWorldTransform(transform);
+  this.ball.body.getMotionState().setWorldTransform(transform);
+  this.ball.body.activate(true);
+
+  this.ball.mesh.position.set(0, 2.2, -1.0);
+
+  this.gameOver = false;
+  this.setStatus("");
+  (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0x00aa44);
+}
+
+
+  /* ========= Selection Input ========= */
   handleInput() {
     if (this.keys["KeyR"]) {
       this.resetBall();
@@ -243,19 +250,19 @@ export class Level1Scene {
     if (moved) this.syncPlatformRotationToPhysics();
   }
 
-  // =====================================
-  // Physics Sync Helpers
-  // =====================================
+  /* ========= Ensure platform physics matches visual rotation ========= */
   syncPlatformRotationToPhysics() {
     const selected = this.selection?.selected ?? this.platform;
 
     const t = new AmmoLib.btTransform();
     t.setIdentity();
-    t.setOrigin(new AmmoLib.btVector3(
-      selected.mesh.position.x,
-      selected.mesh.position.y,
-      selected.mesh.position.z
-    ));
+    t.setOrigin(
+      new AmmoLib.btVector3(
+        selected.mesh.position.x,
+        selected.mesh.position.y,
+        selected.mesh.position.z
+      )
+    );
 
     const q = new THREE.Quaternion().setFromEuler(selected.mesh.rotation);
     t.setRotation(new AmmoLib.btQuaternion(q.x, q.y, q.z, q.w));
@@ -265,17 +272,7 @@ export class Level1Scene {
     this.ball?.body?.activate(true);
   }
 
-  syncBallVisualToPhysics() {
-    const t = new AmmoLib.btTransform();
-    this.ball.body.getMotionState().getWorldTransform(t);
-
-    const p = t.getOrigin();
-    this.ball.mesh.position.set(p.x(), p.y(), p.z());
-  }
-
-  // =====================================
-  // Win/Loss Logic
-  // =====================================
+  /* ========= Physics Sync + Win/Lose ========= */
   syncBallAndCheckWinLoss() {
     const t = new AmmoLib.btTransform();
     this.ball.body.getMotionState().getWorldTransform(t);
@@ -283,14 +280,17 @@ export class Level1Scene {
     const p = t.getOrigin();
     this.ball.mesh.position.set(p.x(), p.y(), p.z());
 
-    // Lose Condition
     if (!this.gameOver && this.ball.mesh.position.y < -2) {
       this.gameOver = true;
       this.setStatus("YOU LOSE", "#ff2244");
       (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0xaa0000);
-      this.showContinueButton();
-      return;
+
+    // Let player proceed without reward
+    this.showContinueButton();
+
+    return;
     }
+
 
     const gx = this.goalMesh.position.x;
     const gz = this.goalMesh.position.z;
@@ -306,15 +306,21 @@ export class Level1Scene {
       this.setStatus("YOU WIN!", "#22ff88");
       (this.goalMesh.material as THREE.MeshStandardMaterial).color.setHex(0x22ff88);
 
+      // --- Give inventory item ---
       inventory.add("GoldenBadge");
+      updateInventoryUI();
+      updateInventoryLabel();  
+
+      // --- OPTIONAL UI reward popup ---
       this.showRewardPopup("You got the Golden Badge!");
+
+      // Show player-controlled continue button
       this.showContinueButton();
+
     }
   }
 
-  // =====================================
-  // Game Loop
-  // =====================================
+  /* ========= Game Loop ========= */
   animate() {
     if (!this.running) return;
 

@@ -99,3 +99,86 @@ On push, our workflow:
 
 ## Reflection
 - Looking back on how we achieved the F1 requirements, our team's plan changed since team formation as we were planning to use Godot engine and find outside 3rd party libraries to implement everything. Due to time constraints and our searching and testing not bearing fruit, we had to make the swap to just using the class standard of three.js and ammo.js. We also planned to code in person under the same roof due to us being close but other class projects got in the way and unfortunately not all of us could collectively code at the same time. We still helped each other in text groups so that we kept bouncing ideas off each other and helped develop the code together and collectively.
+
+# F2 Devlog Entry
+
+## How we satisfied the software requirements
+
+### The game uses the same 3D rendering and physics libraries from F1
+- Our project continues using the Three.js rendering engine and Ammo.js physics system introduced in F1.
+All simulation objects (ball, platforms, ground) are created via functions such as:
+```
+createPlatform(this.scene, physicsWorld, AmmoLib)
+createBall(this.scene, physicsWorld, AmmoLib)
+createGround(this.scene, physicsWorld, AmmoLib)
+```
+- We also *attempted* to refactor the code here as we realized we would be using these much more often, so putting it into the GameObjects.ts would be helpful instead of hard coded into each level scene.
+
+### The game allows movement between scenes
+- The game implements a shared SceneManager class that tracks which scene is active and switches between them
+```
+sceneManager.changeScene(new Level1Scene(), "Level1");
+sceneManager.changeScene(new Level2Scene(), "Level2");
+sceneManager.changeScene(new EndScreenScene(), "End");
+```
+- Our current game scenes include
+    - Main Menu Scene
+    - Level 1 Scene
+    - Level 2 Scene
+    - End Screen Scene
+- Buttons in UI allow the user to transition manually (Continue, Return to Menu), fulfilling the requirement that scenes follow an adventure-style room traversal structure.
+
+### The game allows the player to select objects for interaction
+Nothing too major changed from F1, was modified and refactored to be its own script instead of being hard-coded. The SelectionManager.ts builds a ray-caster and tracks which object is selected via mouse click.
+Scenes register selectable physics objects like so:
+```
+this.selection.addSelectable(platform);
+```
+- This mechanic directly mirrors point-and-click adventure selection conventions — clicking the world to interact with specific objects.
+- A problem that could be disastrous that player platforms aren't automatically selectable, which means for us we have to go through and remember to add them as a selectable in code.
+
+### The game maintains an inventory system enabling cross-scene state
+- The game includes persistent progression via a saved inventory system:
+```
+export class Inventory {
+    private items: Set<string> = new Set();
+    save() { localStorage.setItem("inventory", ...); }
+}
+export const inventory = new Inventory();
+```
+- Some scenes read and modify this
+```
+inventory.add("1st item");
+// or
+inventory.has("2nd item")
+```
+- Inventory UI appears consistently across scenes and affects gameplay logic: Level 2 checks whether the player has "GoldenBadge" to unlock a shortcut platform:
+```
+if (inventory.has("GoldenBadge")) {
+    platform4 = createPlatform(...);
+    this.selection.addSelectable(platform4);
+}
+```
+- Thus, what happens in Level 1 meaningfully changes Level 2, satisfying the adventure-style cross-scene consequence requirement.
+
+### The game contains at least one physics-based puzzle affecting progression
+- Nothing too major changed from F1, code was refactored and restructured and levels are stored in separate scenes compared to F1 now. Each level has a ball that spawns, and the player has to select and rotate selectable platforms to get the ball to reach the goal.
+- Passing or failing this puzzle is relevant to progress as you get items
+
+### The player succeeds or fails based on skill, not randomness
+- Success depends on accurate rotation of platforms and real-time reasoning about tilt and trajectory. If the player mishandles slope angles, the ball rolls off the world:
+- The outcome is deterministic, no dice-roll or RNG, meaning player failure or success comes from understanding physics and manipulating the environment correctly.
+
+### Via play, the game reaches at least one conclusive ending
+- The game includes an explicit end screen scene, reached after Level 2:
+- We have an if statement to check if the player completed the levels and got the respective item. As of now it always displays "YOU WIN" but the message underneath is different depending on if all the items were collected or not.
+```
+if (inventory.has("GoldenBadge") && inventory.has("PlatinumBadge"))
+    summary.textContent = "You collected ALL items!";
+else
+    summary.textContent = "You missed some items...";
+```
+## Reflection
+- Before we wanted to have multiple levels (Originally planning to have 5, COULD STILL CHANGE) but there are some bigger problems that we'd have to solve first. One of the first problems is constantly needing to update old code. Our level2.ts is the latest and uses the newest refactored code (Being GameObjects.ts such as physics objects and platforms) using a new helper method that does the positioning, rotating, tilting, and more. Level2.ts uses it where appropriately but Level1 as of now does not use it yet. We will eventually fix it for upcoming F3 but for now the level still works and a prototype of the concept is our ideal as of now for F2.
+- Even though F1 had us set up automation, physics, rendering, and more, F2 required us to use the same tools that we made earlier in F1. For most of F2 requirements it was fine and worked flawlessly, but as described earlier we would need to refactor the code, F1 had everything hard-coded in as we needed something to work. Platforms, balls, UI, data, and more was hard-coded into the main scene. We have to eventually move out and separate everything into different typescript files for better organization and architecture for later scalability. One of the harder ones was definitely game objects with its physics and SceneManager, it took a while to get a singleton instance to work.
+- TLDR: Our approach is changing in that we are trying to get something to work at first, and didn't bother fixing it back then. Now our efforts are changing to refactor the codebase more so that we'll have an easier time in the future if something needs to be changed.

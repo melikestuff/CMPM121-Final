@@ -1,46 +1,41 @@
 export type SceneController = {
-  start(): void;
-  stop(): void;
+    start(): void;
+    stop(): void;
 };
 
 export class SceneManager {
-  private currentScene: SceneController | null = null;
+    private currentScene: SceneController | null = null;
 
-  // Keys for persistent storage
-  private lastSceneKey = "lastScene";
-  private unlockedLevelKey = "unlockedLevel";
+    // === Save LAST SCENE (existing system) ===
+    getSavedSceneName(): string | null {
+        return localStorage.getItem("lastScene");
+    }
 
-   // --------------- Load / Save last played scene ----------------
-  getSavedSceneName(): string | null {
-    return localStorage.getItem("lastScene");
-  }
+    saveSceneName(name: string) {
+        localStorage.setItem("lastScene", name);
+    }
 
-  saveSceneName(name: string) {
-    localStorage.setItem("lastScene", name);
-  }
+    // === NEW: Track highest unlocked level ===
+    unlockLevel(level: string) {
+        localStorage.setItem("unlockedLevel", level);
+    }
 
-  // --------------- Level Unlock System ----------------
-  unlockLevel(levelName: string) {
-    localStorage.setItem(this.unlockedLevelKey, levelName);
-  }
+    getUnlockedLevel(): string {
+        return localStorage.getItem("unlockedLevel") ?? "Level1";
+    }
 
-  getUnlockedLevel(): string | null {
-    return localStorage.getItem(this.unlockedLevelKey);
-  }
+    resetProgress() {
+        localStorage.removeItem("unlockedLevel");
+    }
 
-  resetProgress() {
-    localStorage.removeItem(this.unlockedLevelKey);
-    localStorage.removeItem(this.lastSceneKey);
-  }
-
-  // --------------- Scene Switching ----------------
-  changeScene(next: SceneController, sceneName: string) {
-    if (this.currentScene) this.currentScene.stop();
-    this.currentScene = next;
-    this.saveSceneName(sceneName);
-    next.start();
-  }
+    // === Scene transition logic ===
+    changeScene(next: SceneController, sceneName: string) {
+        if (this.currentScene) this.currentScene.stop();
+        this.currentScene = next;
+        this.saveSceneName(sceneName);
+        next.start();
+    }
 }
 
-// Singleton - so any file can import it
+// Singleton instance
 export const sceneManager = new SceneManager();

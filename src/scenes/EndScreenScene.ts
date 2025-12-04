@@ -50,7 +50,8 @@ export class EndScreenScene {
     menuBtn.style.padding = "10px 25px";
     menuBtn.style.fontSize = "20px";
     menuBtn.onclick = () => {
-      sceneManager.changeScene(new MainMenuScene(), "MainMenu");
+        sceneManager.unlockLevel("End");
+        sceneManager.changeScene(new MainMenuScene(), "MainMenu");
     };
     this.container.appendChild(menuBtn);
 

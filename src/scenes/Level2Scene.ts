@@ -19,8 +19,12 @@ import { inventory } from "../Inventory";
 import { updateInventoryLabel } from "../Inventory";
 import { updateInventoryUI } from "../UIInventoryDisplay";
 import { EndScreenScene } from "./EndScreenScene";
+import { TouchControlsUI } from "../UIControls";
+
 
 export class Level2Scene {
+  private controlsUI: TouchControlsUI | null = null;
+
   private running = false;
   private animateBound: () => void;
 
@@ -59,6 +63,29 @@ async start() {
 
     this.initThree();
     this.initInput();
+
+    this.controlsUI = new TouchControlsUI();
+
+this.controlsUI.leftBtn.onclick = () => {
+  if (this.selection.selected) {
+    this.selection.selected.mesh.rotation.z += 0.03;
+    this.syncPlatformTransform(this.selection.selected);
+    this.ball.body.activate(true);
+  }
+};
+
+this.controlsUI.rightBtn.onclick = () => {
+  if (this.selection.selected) {
+    this.selection.selected.mesh.rotation.z -= 0.03;
+    this.syncPlatformTransform(this.selection.selected);
+    this.ball.body.activate(true);
+  }
+};
+
+this.controlsUI.resetBtn.onclick = () => {
+  this.resetBall();
+};
+
 
     this.ground = createGround(this.scene, physicsWorld, AmmoLib);
 
@@ -116,10 +143,12 @@ async start() {
   // Stop
   // =====================================
   stop() {
-    this.running = false;
-    if (this.renderer) this.renderer.domElement.remove();
-    if (this.levelLabel) this.levelLabel.remove();
-  }
+  this.running = false;
+  if (this.renderer) this.renderer.domElement.remove();
+  if (this.controlsUI) this.controlsUI.remove();
+  if (this.levelLabel) this.levelLabel.remove();
+}
+
 
   // =====================================
   // UI

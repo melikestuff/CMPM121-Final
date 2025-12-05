@@ -14,9 +14,12 @@ import { inventory } from "../Inventory";
 import { Level2Scene } from "./Level2Scene";
 import { updateInventoryUI } from "../UIInventoryDisplay";
 import { updateInventoryLabel } from "../Inventory";
+import { TouchControlsUI } from "../UIControls";
 
 
 export class Level1Scene {
+  private controlsUI: TouchControlsUI | null = null;
+
   private running = false;
   private animateBound: () => void;
 
@@ -76,6 +79,27 @@ createLevelLabel(levelText: string) {
     this.initThree();
     this.initInput();
 
+    this.controlsUI = new TouchControlsUI();
+
+this.controlsUI.leftBtn.onclick = () => {
+  if (this.selection.selected) {
+    this.selection.selected.mesh.rotation.z += 0.03;
+    this.syncPlatformRotationToPhysics();
+  }
+};
+
+this.controlsUI.rightBtn.onclick = () => {
+  if (this.selection.selected) {
+    this.selection.selected.mesh.rotation.z -= 0.03;
+    this.syncPlatformRotationToPhysics();
+  }
+};
+
+this.controlsUI.resetBtn.onclick = () => {
+  this.resetBall();
+};
+
+
     this.ground = createGround(this.scene, physicsWorld, AmmoLib);
     this.goalMesh = createGoal(this.scene);
     this.goalMesh.position.set(2, 0.05, -3);
@@ -108,6 +132,7 @@ createLevelLabel(levelText: string) {
   stop() {
     this.running = false;
     if (this.renderer) this.renderer.domElement.remove();
+    if (this.controlsUI) this.controlsUI.remove();
   }
 
   /* ========= UI Helper ========= */
@@ -199,6 +224,7 @@ showContinueButton() {
     window.addEventListener("keyup", e => (this.keys[e.code] = false));
   }
 
+  
   /* ========= Reset Ball ========= */
   resetBall() {
   // remove continue button if present

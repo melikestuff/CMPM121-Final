@@ -1,6 +1,10 @@
 <!doctype html>
 <html>
   <head>
+    <meta name="viewport" 
+      content="width=device-width, initial-scale=1.0, user-scalable=no, 
+      minimum-scale=1.0, maximum-scale=1.0">
+
     <meta charset="utf-8" />
     <title>Three.js + Ammo.js Physics Puzzle</title>
     <style>
@@ -11,7 +15,7 @@
     --platform-color: #3366ff;
     --button-border: black;
   }
-
+  
   @media (prefers-color-scheme: dark) {
     :root {
       --ui-bg: rgba(20,20,20,0.85);
@@ -20,7 +24,21 @@
       --button-border: white;
     }
   }
-
+  @media screen and (orientation: portrait) {
+  body::before {
+    content: "Rotate your device to play";
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.85);
+    color: white;
+    padding: 20px;
+    font-size: 20px;
+    z-index: 9999;
+  }
+}
   body {
     margin: 0;
     overflow: hidden;

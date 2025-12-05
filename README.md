@@ -182,3 +182,39 @@ else
 - Before we wanted to have multiple levels (Originally planning to have 5, COULD STILL CHANGE) but there are some bigger problems that we'd have to solve first. One of the first problems is constantly needing to update old code. Our level2.ts is the latest and uses the newest refactored code (Being GameObjects.ts such as physics objects and platforms) using a new helper method that does the positioning, rotating, tilting, and more. Level2.ts uses it where appropriately but Level1 as of now does not use it yet. We will eventually fix it for upcoming F3 but for now the level still works and a prototype of the concept is our ideal as of now for F2.
 - Even though F1 had us set up automation, physics, rendering, and more, F2 required us to use the same tools that we made earlier in F1. For most of F2 requirements it was fine and worked flawlessly, but as described earlier we would need to refactor the code, F1 had everything hard-coded in as we needed something to work. Platforms, balls, UI, data, and more was hard-coded into the main scene. We have to eventually move out and separate everything into different typescript files for better organization and architecture for later scalability. One of the harder ones was definitely game objects with its physics and SceneManager, it took a while to get a singleton instance to work.
 - TLDR: Our approach is changing in that we are trying to get something to work at first, and didn't bother fixing it back then. Now our efforts are changing to refactor the codebase more so that we'll have an easier time in the future if something needs to be changed.
+
+# F3 Devlog Entry
+
+## Selected requirements
+- Save System
+- Visual Themes
+- Touchscreen
+- External DSL
+- Unlimited Undos
+
+## How we satisfied the software requirements
+
+### Save system and persistent game progress
+We integrated a save system into the SceneManager, leveraging browser localStorage to persist player progress across sessions. The system stores both the highest unlocked level and earned inventory items (such as badges). Every time a player earns a reward or progresses to a new level, the game serializes this state and writes it to persistent storage. When the game boots or loads from the main menu, it restores this saved progress and adjusts available levels and conditional content accordingly. This ensures game state continuity between plays and across page reloads, satisfying the requirement for automated persistence and restoration of player state.
+
+### Touchscreen-only gameplay support
+Our project implements a joystick-free, button-based input system that enables full gameplay using touch screens. We created a dedicated UI class (TouchControlsUI) that renders tilt and reset buttons in the scene, positioned responsively for mobile users. These buttons directly manipulate selected platforms and trigger ball resets without requiring physical keyboard input. The SelectionManager also relies on pointer events, meaning all object interactions in the game (selection, control, progression) are compatible with mouse, tap, or touch gestures. As a result, the game is playable on touchscreen devices without any keyboard-based fallback, fulfilling the touchscreen gameplay requirement.
+
+### External DSL implementation
+We satisfy the DSL requirement by moving level construction data into externally readable JSON files stored under /levels/. Our LevelLoader.ts interprets these files at runtime and constructs objects in the 3D scene according to the configuration entries for goals, platforms, ball positions, selectable indices, and conditional layouts. This allows level design to occur outside the compiled source code, making level content readable, editable, and extendable by non-programmers. Conditional content rules and selectable mechanics are also parsed dynamically, demonstrating genuine separation between level definition and game execution logic which is essential for a functional DSL.
+
+### System-integrated visual theme support
+We implemented a lightweight theming system using prefers-color-scheme detection to automatically match the game's UI to the player’s operating system appearance settings (light or dark mode). CSS variables drive dynamic coloring for UI controls, status text, and interaction buttons while exposing hooks for material tinting within gameplay environments (e.g., platform color shifts). This ensures that UI elements adapt automatically without requiring configuration or restart, meeting the operating system visual theme integration requirement and improving accessibility and presentation quality.
+
+### Unlimited Undos
+
+Our game implements an unlimited undo system via an instant reset mechanic bound to both keyboard input (R) and touch UI interaction (reset button). At any point during gameplay, the player can reset the state of the level without penalty the ball is repositioned to its starting coordinates, velocities are cleared, physics state is reset, UI effects are dismissed, and win/loss flags are cleared. Because this can be triggered an unlimited number of times, players can iteratively refine their attempts or recover from mistakes without reloading the entire game or re-entering the scene.
+- Continuous opportunity to retry without progress loss
+- Immediate reversion to initial state rather than full scene reload
+- Works on both keyboard and touchscreen control modes
+
+players do not get locked into an unwinnable state, and iteration becomes integral to puzzle solving.
+
+## Reflection
+
+Looking back on our F3 implementation, our approach evolved more than we anticipated. Early in development, our plan assumed that most features could be layered onto our F2 prototype without major restructuring. In practice, however, satisfying F3, especially external DSL support, touch UI, and persistent progression, demanded repeated refactoring. As our codebase grew, it became noticeably harder to detect code smells, tight couplings or duplicated logic often hid across files, and interactions between subsystems (UI, physics, scene transitions, data loading) made small changes ripple unexpectedly through the project. This forced us to confront the reality that writing new code is often easier than maintaining or extending existing systems. We learned that seemingly simple additions like a reset mechanic or level loading abstraction required architectural thinking rather than patching. As a result, our mindset shifted from “just make it work” to “design so it can continue working.” While the process was more tiring than expected, it helped us appreciate why tooling, modularity, and planning matter, especially as projects scale beyond early prototypes.

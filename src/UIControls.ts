@@ -36,9 +36,9 @@ export class TouchControlsUI {
     // Nicer button styling for bottom UI
     btn.style.fontSize = "30px";
     btn.style.padding = "14px 22px";
-    btn.style.background = "rgba(30,30,30,0.85)";
-    btn.style.color = "white";
-    btn.style.border = "2px solid white";
+    btn.style.background = "var(--ui-bg)";
+    btn.style.color = "var(--ui-text)";
+    btn.style.border = "2px solid var(--button-border)";
     btn.style.borderRadius = "10px";
     btn.style.cursor = "pointer";
     btn.style.touchAction = "manipulation";

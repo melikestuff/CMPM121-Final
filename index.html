@@ -4,37 +4,55 @@
     <meta charset="utf-8" />
     <title>Three.js + Ammo.js Physics Puzzle</title>
     <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background: black;
-        color: white;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      }
+  /* === Theme Variables === */
+  :root {
+    --ui-bg: rgba(240,240,240,0.85);
+    --ui-text: black;
+    --platform-color: #3366ff;
+    --button-border: black;
+  }
 
-      #ui {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        font-size: 14px;
-        color: #ddd;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 8px 10px;
-        border-radius: 6px;
-      }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ui-bg: rgba(20,20,20,0.85);
+      --ui-text: white;
+      --platform-color: #8888ff;
+      --button-border: white;
+    }
+  }
 
-      #status-message {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 36px;
-        font-weight: 900;
-        color: white;
-        text-shadow: 0 0 15px black;
-        pointer-events: none;
-      }
-    </style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    color: white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  #ui {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    font-size: 14px;
+    color: #ddd;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+
+  #status-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 0 15px black;
+    pointer-events: none;
+  }
+</style>
+
   </head>
 
   <body>

@@ -51,7 +51,12 @@ export function createGround(
   AmmoLib: any
 ): PhysicsObject {
   const geom = new THREE.BoxGeometry(20, 0.5, 20);
-  const mat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(
+        getComputedStyle(document.documentElement)
+            .getPropertyValue("--platform-color")
+    )
+  });
   const mesh = new THREE.Mesh(geom, mat);
 
   mesh.position.set(0, -0.25, 0);
@@ -141,7 +146,7 @@ export function createPlatform(
   tiltX = -0.35
 ): PhysicsObject {
   const geom = new THREE.BoxGeometry(3, 0.3, 3);
-  const mat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
+  const mat = new THREE.MeshStandardMaterial({ color: 0x00FF84 });
   const mesh = new THREE.Mesh(geom, mat);
 
   mesh.position.copy(position);

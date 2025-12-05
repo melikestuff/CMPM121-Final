@@ -6,12 +6,14 @@ export class TouchControlsUI {
 
   constructor() {
     this.container = document.createElement("div");
+
+    // New Bottom UI Layout 
     this.container.style.position = "absolute";
-    this.container.style.top = "10px";
+    this.container.style.bottom = "20px"; // bottom instead of top
     this.container.style.left = "50%";
     this.container.style.transform = "translateX(-50%)";
     this.container.style.display = "flex";
-    this.container.style.gap = "12px";
+    this.container.style.gap = "18px";      // little wider spacing
     this.container.style.zIndex = "2500";
 
     document.body.appendChild(this.container);
@@ -21,6 +23,7 @@ export class TouchControlsUI {
     this.rightBtn = this.makeButton("⟶");
     this.resetBtn = this.makeButton("⟳");
 
+    // Order: left | reset | right
     this.container.appendChild(this.leftBtn);
     this.container.appendChild(this.resetBtn);
     this.container.appendChild(this.rightBtn);
@@ -29,14 +32,17 @@ export class TouchControlsUI {
   private makeButton(label: string): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.textContent = label;
-    btn.style.fontSize = "24px";
-    btn.style.padding = "10px 18px";
-    btn.style.background = "rgba(30,30,30,0.8)";
+
+    // Nicer button styling for bottom UI
+    btn.style.fontSize = "30px";
+    btn.style.padding = "14px 22px";
+    btn.style.background = "rgba(30,30,30,0.85)";
     btn.style.color = "white";
     btn.style.border = "2px solid white";
-    btn.style.borderRadius = "8px";
+    btn.style.borderRadius = "10px";
     btn.style.cursor = "pointer";
     btn.style.touchAction = "manipulation";
+
     return btn;
   }
 

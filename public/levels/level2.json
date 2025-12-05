@@ -1,0 +1,29 @@
+{
+  "goal": { "x": 4, "y": 0.05, "z": 3 },
+
+  "ground": { "x": 0, "y": -0.25, "z": 0 },
+
+  "ball": { "x": 0, "y": 2.2, "z": -1 },
+
+  "platforms": [
+    { "x": 0, "y": 1, "z": -1, "rx": 0 },
+
+    { "x": -3, "y": 1, "z": 0, "rx": 2 },
+
+    { "x": -3, "y": 1, "z": 3, "rx": 2 }
+  ],
+
+  "selectableIndices": [0, 1, 2, 3],
+
+  "conditionalPlatforms": [
+    {
+      "requiredItem": "GoldenBadge",
+      "x": 3,
+      "y": 0,
+      "z": 0,
+      "rx": 0.4,
+      "addToSelectable": true,
+      "statusMessage": "Secret Shortcut Unlocked!"
+    }
+  ]
+}

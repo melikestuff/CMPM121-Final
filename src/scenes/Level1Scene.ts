@@ -15,6 +15,7 @@ import { Level2Scene } from "./Level2Scene";
 import { updateInventoryUI } from "../UIInventoryDisplay";
 import { updateInventoryLabel } from "../Inventory";
 import { TouchControlsUI } from "../UIControls";
+import { loadLevel } from "../LevelLoader";
 
 
 export class Level1Scene {
@@ -69,65 +70,58 @@ createLevelLabel(levelText: string) {
   }
 
   async start() {
-    this.running = true;
+  this.running = true;
+  await initPhysics();
 
-    await initPhysics();
+  this.statusEl = document.getElementById("status-message") as HTMLDivElement | null;
+  this.setStatus("");
 
-    this.statusEl = document.getElementById("status-message") as HTMLDivElement | null;
-    this.setStatus("");
+  this.initThree();
+  this.initInput();
 
-    this.initThree();
-    this.initInput();
+  // UI and ground
+  this.controlsUI = new TouchControlsUI();
+  // Hook touchscreen UI actions
+  this.controlsUI.leftBtn.onclick = () => {
+    if (this.selection.selected) {
+      this.selection.selected.mesh.rotation.z += 0.03;
+      this.syncPlatformTransform();
+      }
+    };
 
-    this.controlsUI = new TouchControlsUI();
+    this.controlsUI.rightBtn.onclick = () => {
+      if (this.selection.selected) {
+      this.selection.selected.mesh.rotation.z -= 0.03;
+      this.syncPlatformTransform();
+      }
+    };
 
-this.controlsUI.leftBtn.onclick = () => {
-  if (this.selection.selected) {
-    this.selection.selected.mesh.rotation.z += 0.03;
-    this.syncPlatformRotationToPhysics();
-  }
-};
+    this.controlsUI.resetBtn.onclick = () => {
+      this.resetBall();
+    };
 
-this.controlsUI.rightBtn.onclick = () => {
-  if (this.selection.selected) {
-    this.selection.selected.mesh.rotation.z -= 0.03;
-    this.syncPlatformRotationToPhysics();
-  }
-};
+  // Selection must exist before loadLevel
+  this.selection = new SelectionManager(this.camera, this.renderer);
 
-this.controlsUI.resetBtn.onclick = () => {
-  this.resetBall();
-};
+  // Load level1 from external DSL (JSON)
+  const level = await loadLevel(
+    "level1",
+    this.scene,
+    physicsWorld,
+    AmmoLib,
+    this.selection
+  );
+
+  // Use objects returned by loader
+  this.goalMesh = level.goal ?? createGoal(this.scene);
+  this.ball = level.ball ?? createBall(this.scene, physicsWorld, AmmoLib);
+  this.platform = level.platforms[0]; // your main tilt platform
+
+  updateInventoryUI();
+  requestAnimationFrame(this.animateBound);
+}
 
 
-    this.ground = createGround(this.scene, physicsWorld, AmmoLib);
-    this.goalMesh = createGoal(this.scene);
-    this.goalMesh.position.set(2, 0.05, -3);
-
-    // Create platform FIRST then apply rotation immediately
-    this.platform = createPlatform(this.scene, physicsWorld, AmmoLib);
-
-    // Force physics sync so slope actually exists BEFORE ball placement
-    this.syncPlatformRotationToPhysics();
-
-    // Now spawn ball at correct slope-side location
-    this.ball = createBall(this.scene, physicsWorld, AmmoLib);
-
-    // Sync visual position of ball to physics
-    {
-      const tmp = new AmmoLib.btTransform();
-      this.ball.body.getMotionState().getWorldTransform(tmp);
-      const p = tmp.getOrigin();
-      this.ball.mesh.position.set(p.x(), p.y(), p.z());
-    }
-
-    // selection system
-    this.selection = new SelectionManager(this.camera, this.renderer);
-    this.selection.addSelectable(this.platform);
-
-    updateInventoryUI();
-    requestAnimationFrame(this.animateBound);
-  }
 
   stop() {
     this.running = false;
@@ -273,11 +267,11 @@ showContinueButton() {
       moved = true;
     }
 
-    if (moved) this.syncPlatformRotationToPhysics();
+    if (moved) this.syncPlatformTransform();
   }
 
   /* ========= Ensure platform physics matches visual rotation ========= */
-  syncPlatformRotationToPhysics() {
+  syncPlatformTransform() {
     const selected = this.selection?.selected ?? this.platform;
 
     const t = new AmmoLib.btTransform();

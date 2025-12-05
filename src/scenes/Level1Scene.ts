@@ -308,6 +308,7 @@ showContinueButton() {
 
       // --- Give inventory item ---
       inventory.add("GoldenBadge");
+      sceneManager.saveGame();
       updateInventoryUI();
       updateInventoryLabel();  
 

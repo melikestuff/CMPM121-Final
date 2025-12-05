@@ -371,6 +371,7 @@ async start() {
 
       // Award final badge + refresh UI
       inventory.add("PlatinumBadge");
+      sceneManager.saveGame();
       updateInventoryLabel(); 
       updateInventoryUI();
 

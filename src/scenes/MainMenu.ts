@@ -2,6 +2,7 @@ import { sceneManager } from "../SceneManager";
 import { Level1Scene } from "./Level1Scene";
 import { inventory } from "../Inventory";
 import { Level2Scene } from "./Level2Scene";
+import { EndScreenScene } from "./EndScreenScene";
 
 export class MainMenuScene {
   private container: HTMLDivElement | null = null;
@@ -48,14 +49,18 @@ export class MainMenuScene {
     continueBtn.textContent = "Continue";
     continueBtn.style.padding = "10px 30px";
     continueBtn.onclick = () => {
+    sceneManager.loadGame();  // Restore saved state
+
     const unlocked = sceneManager.getUnlockedLevel();
 
     if (unlocked === "Level2") {
         sceneManager.changeScene(new Level2Scene(), "Level2");
+    } else if (unlocked === "End") {
+        sceneManager.changeScene(new EndScreenScene(), "End");
     } else {
         sceneManager.changeScene(new Level1Scene(), "Level1");
     }
-    };
+};
 
     this.container.appendChild(continueBtn);
 
